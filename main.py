@@ -80,7 +80,13 @@ def calculate_cost(input_tokens, output_tokens, model="gpt-4"):
 
 # Prompt dinamico basato sui token utilizzati
 def get_dynamic_prompt(tokens_used, messages_count):
-    base_prompt = """
+    # LEGGE il prompt principale dal file
+    try:
+        with open('PROMPT_CORSO_BASE_INGLESE_DEFINITIVO.txt', 'r', encoding='utf-8') as f:
+            main_prompt = f.read()
+    except FileNotFoundError:
+        # Fallback se il file non esiste
+        main_prompt = """
 Sei Prof. Lennon, un insegnante di inglese esperto e motivante.
 Obiettivo: Insegnare inglese base in modo interattivo e coinvolgente.
 
@@ -92,20 +98,42 @@ Regole fondamentali:
 5. Celebra i progressi dell'utente
 """
     
-    # Prompt più breve se stiamo usando troppi token
-    if tokens_used > MAX_TOKENS_PER_LESSON * 0.7:
-        return """
-Prof. Lennon - Inglese Base
-Sii conciso ma efficace. Mantieni qualità didattica.
-"""
-    
-    # Prompt di chiusura se vicini al limite
-    if messages_count >= MAX_MESSAGES_PER_LESSON - 3:
-        return base_prompt + """
+    # Aggiunge contesto della sessione
+    session_context = f"""
 
-IMPORTANTE: Stai per concludere questa lezione. Prepara un riassunto dei progressi.
+=== CONTESTO SESSIONE CORRENTE ===
+Messaggio: {messages_count + 1}/{MAX_MESSAGES_PER_LESSON}
+Token utilizzati: {tokens_used}/{MAX_TOKENS_PER_LESSON}
+
+=== FILE DI RIFERIMENTO DISPONIBILI ===
+Per creare le lezioni, consulta questi file quando necessario:
+- PROGRAMMA_CORSO_BASE.txt (argomenti e struttura del corso)
+- STRUTTURA_STEP_LEZIONI_BASE.txt (struttura dettagliata degli step)
+- LEZIONE_1.txt (esempio di lezione completa)
+- LEZIONE_2.txt (esempio di lezione completa)
+- LEZIONE_11.txt (esempio di lezione completa)
+
+=== ISTRUZIONI COMPORTAMENTALI ===
+- Se l'utente dice \"procedi\", \"continua\", \"avanti\" → NON ripetere l'introduzione
+- Mantieni il thread di conversazione coerente
+- Adatta il contenuto al progresso dell'utente
+- Usa i file di riferimento solo quando serve il contenuto specifico
 """
     
+    # Gestione dinamica basata sui limiti
+    if tokens_used > MAX_TOKENS_PER_LESSON * 0.8:
+        session_context += """
+
+⚠️ ATTENZIONE: Token quasi esauriti - Sii più conciso ma mantieni la qualità didattica.
+"""
+    
+    if messages_count >= MAX_MESSAGES_PER_LESSON - 3:
+        session_context += """
+
+⚠️ ATTENZIONE: Messaggi quasi esauriti - Prepara un riassunto dei progressi della lezione.
+"""
+    
+    return main_prompt + session_context
     return base_prompt
 
 # Logging avanzato
